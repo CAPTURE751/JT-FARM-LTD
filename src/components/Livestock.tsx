@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { 
   Plus, 
   Search, 
-  Cow, 
+  Beef, 
   Calendar,
   MapPin,
   Activity,
@@ -149,7 +148,7 @@ export function Livestock() {
                 <p className="text-sm text-muted-foreground">Total Animals</p>
                 <p className="text-2xl font-bold">{livestock.length}</p>
               </div>
-              <Cow className="h-8 w-8 text-farm-barn" />
+              <Beef className="h-8 w-8 text-farm-barn" />
             </div>
           </CardContent>
         </Card>
@@ -271,7 +270,7 @@ export function Livestock() {
       {filteredLivestock.length === 0 && (
         <Card>
           <CardContent className="text-center py-12">
-            <Cow className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <Beef className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">No animals found</h3>
             <p className="text-muted-foreground mb-4">
               {searchTerm ? "Try adjusting your search terms" : "Get started by adding your first animal"}

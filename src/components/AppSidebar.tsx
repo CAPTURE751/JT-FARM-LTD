@@ -2,7 +2,7 @@
 import { 
   BarChart3, 
   Wheat, 
-  Cow, 
+  Beef, 
   DollarSign, 
   Calendar,
   Settings,
@@ -26,7 +26,7 @@ import {
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Crops", url: "/crops", icon: Wheat },
-  { title: "Livestock", url: "/livestock", icon: Cow },
+  { title: "Livestock", url: "/livestock", icon: Beef },
   { title: "Finances", url: "/finances", icon: DollarSign },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Reports", url: "/reports", icon: FileText },
@@ -35,7 +35,7 @@ const navigationItems = [
 ];
 
 export function AppSidebar() {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const location = useLocation();
   
   const isActive = (path: string) => {
@@ -52,8 +52,10 @@ export function AppSidebar() {
       : "hover:bg-accent hover:text-accent-foreground";
   };
 
+  const collapsed = state === "collapsed";
+
   return (
-    <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible>
+    <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible="icon">
       <SidebarContent className="py-6">
         <div className="px-6 mb-6">
           {!collapsed && (

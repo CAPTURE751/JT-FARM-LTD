@@ -1,9 +1,8 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Wheat, 
-  Cow, 
+  Beef, 
   DollarSign, 
   TrendingUp, 
   Plus,
@@ -90,7 +89,7 @@ export function Dashboard() {
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Livestock</CardTitle>
-            <Cow className="h-5 w-5 text-farm-barn" />
+            <Beef className="h-5 w-5 text-farm-barn" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">250</div>
@@ -207,7 +206,7 @@ export function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Cow className="h-5 w-5" />
+              <Beef className="h-5 w-5" />
               Livestock Distribution
             </CardTitle>
           </CardHeader>
