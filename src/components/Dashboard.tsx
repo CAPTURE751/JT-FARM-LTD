@@ -8,9 +8,16 @@ import {
   Plus,
   Calendar,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  LogOut
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCrops } from "@/hooks/useCrops";
+import { useLivestock } from "@/hooks/useLivestock";
+import { useSales } from "@/hooks/useSales";
+import { useInventory } from "@/hooks/useInventory";
+import { useInventoryAlerts, useGenerateFarmReport, useProfitLossCalculation } from "@/hooks/useEdgeFunctions";
 
 // Mock data for charts
 const revenueData = [
@@ -37,11 +44,28 @@ const livestockData = [
 ];
 
 export function Dashboard() {
+  const { profile, signOut } = useAuth();
+  const { crops, isLoading: cropsLoading } = useCrops();
+  const { livestock, isLoading: livestockLoading } = useLivestock();
+  const { analytics, isLoading: salesLoading } = useSales();
+  const { lowStockItems } = useInventory();
+  
+  // Edge Functions
+  const inventoryAlerts = useInventoryAlerts();
+  const generateReport = useGenerateFarmReport();
+  const calculateProfitLoss = useProfitLossCalculation();
+
   const upcomingTasks = [
     { id: 1, task: "Fertilize corn field A", date: "Today", priority: "high" },
     { id: 2, task: "Vaccinate cattle group B", date: "Tomorrow", priority: "medium" },
     { id: 3, task: "Harvest wheat section 3", date: "In 3 days", priority: "high" },
     { id: 4, task: "Feed inventory check", date: "This week", priority: "low" },
+    ...lowStockItems.map(item => ({
+      id: `stock-${item.id}`,
+      task: `Restock ${item.item_name}`,
+      date: "ASAP",
+      priority: "high" as const
+    }))
   ];
 
   const getPriorityColor = (priority: string) => {
@@ -59,13 +83,28 @@ export function Dashboard() {
       <div className="farm-gradient rounded-xl p-6 text-white">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Welcome back, Farmer!</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Welcome back, {profile?.name || 'Farmer'}!</h1>
             <p className="text-white/80 mt-1">Here's what's happening on your farm today</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-              <Plus className="h-4 w-4 mr-2" />
-              Quick Add
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              onClick={() => inventoryAlerts.mutate()}
+              disabled={inventoryAlerts.isPending}
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Check Alerts
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              onClick={signOut}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
             </Button>
           </div>
         </div>
@@ -79,9 +118,11 @@ export function Dashboard() {
             <Wheat className="h-5 w-5 text-farm-green" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
+            <div className="text-2xl font-bold">
+              {cropsLoading ? '...' : crops.length}
+            </div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+2</span> from last month
+              Active crop records
             </p>
           </CardContent>
         </Card>
@@ -92,9 +133,11 @@ export function Dashboard() {
             <Beef className="h-5 w-5 text-farm-barn" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">250</div>
+            <div className="text-2xl font-bold">
+              {livestockLoading ? '...' : livestock.length}
+            </div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+12</span> from last month
+              Total livestock count
             </p>
           </CardContent>
         </Card>
@@ -105,9 +148,11 @@ export function Dashboard() {
             <DollarSign className="h-5 w-5 text-farm-harvest" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$12,890</div>
+            <div className="text-2xl font-bold">
+              ${salesLoading ? '...' : analytics?.totalRevenue?.toLocaleString() || '0'}
+            </div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+8.2%</span> from last month
+              Total sales revenue
             </p>
           </CardContent>
         </Card>
@@ -118,9 +163,11 @@ export function Dashboard() {
             <TrendingUp className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">34.2%</div>
+            <div className="text-2xl font-bold">
+              {salesLoading ? '...' : analytics?.completedSales || '0'}
+            </div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+2.1%</span> from last month
+              Completed sales
             </p>
           </CardContent>
         </Card>
@@ -170,18 +217,18 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Tasks and Livestock Distribution */}
+      {/* Tasks and Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Upcoming Tasks
+              Upcoming Tasks & Alerts
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {upcomingTasks.map((task) => (
+              {upcomingTasks.slice(0, 5).map((task) => (
                 <div key={task.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
                     {task.priority === 'high' ? (
@@ -199,6 +246,13 @@ export function Dashboard() {
                   </span>
                 </div>
               ))}
+              {lowStockItems.length > 5 && (
+                <div className="p-3 rounded-lg border border-red-200 bg-red-50">
+                  <p className="text-sm text-red-700 font-medium">
+                    +{lowStockItems.length - 5} more low stock items require attention
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -206,42 +260,67 @@ export function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Beef className="h-5 w-5" />
-              Livestock Distribution
+              <Plus className="h-5 w-5" />
+              Quick Actions
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={livestockData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {livestockData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="mt-4 space-y-2">
-              {livestockData.map((item, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span>{item.name}</span>
-                  </div>
-                  <span className="font-medium">{item.value}</span>
+          <CardContent className="space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => generateReport.mutate({
+                report_type: 'comprehensive',
+                include_charts: true
+              })}
+              disabled={generateReport.isPending}
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Generate Report
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => calculateProfitLoss.mutate({
+                start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                end_date: new Date().toISOString().split('T')[0]
+              })}
+              disabled={calculateProfitLoss.isPending}
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Calculate P&L (30d)
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-start"
+              onClick={() => inventoryAlerts.mutate()}
+              disabled={inventoryAlerts.isPending}
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Run Inventory Check
+            </Button>
+            
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground mb-2">System Status</p>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>Database: Connected</span>
                 </div>
-              ))}
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>Real-time: Active</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <div className={`w-2 h-2 rounded-full ${lowStockItems.length > 0 ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                  <span>Inventory: {lowStockItems.length === 0 ? 'Good' : `${lowStockItems.length} alerts`}</span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
+
       </div>
     </div>
   );
