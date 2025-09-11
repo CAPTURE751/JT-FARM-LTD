@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatKES } from "@/lib/currency";
 import { 
   BarChart3,
   TrendingUp,
@@ -263,7 +264,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="quarter" />
                   <YAxis />
-                  <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, '']} />
+                  <Tooltip formatter={(value) => [formatKES(Number(value)), '']} />
                   <Area 
                     type="monotone" 
                     dataKey="revenue" 

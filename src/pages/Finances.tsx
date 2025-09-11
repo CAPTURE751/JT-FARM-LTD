@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatKES } from "@/lib/currency";
 import { 
   DollarSign,
   Plus,
@@ -125,7 +126,7 @@ export default function Finances() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Income</p>
-                  <p className="text-2xl font-bold text-green-600">${totalIncome.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600">{formatKES(totalIncome)}</p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-green-600" />
               </div>
@@ -137,7 +138,7 @@ export default function Finances() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Expenses</p>
-                  <p className="text-2xl font-bold text-red-600">${totalExpenses.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-red-600">{formatKES(totalExpenses)}</p>
                 </div>
                 <TrendingDown className="h-8 w-8 text-red-600" />
               </div>
@@ -150,7 +151,7 @@ export default function Finances() {
                 <div>
                   <p className="text-sm text-muted-foreground">Net Profit</p>
                   <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${netProfit.toLocaleString()}
+                    {formatKES(netProfit)}
                   </p>
                 </div>
                 <DollarSign className={`h-8 w-8 ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
@@ -164,7 +165,7 @@ export default function Finances() {
                 <div>
                   <p className="text-sm text-muted-foreground">Pending</p>
                   <p className="text-2xl font-bold text-farm-harvest">
-                    ${transactions.filter(t => t.status === 'pending').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+                    {formatKES(transactions.filter(t => t.status === 'pending').reduce((sum, t) => sum + t.amount, 0))}
                   </p>
                 </div>
                 <Receipt className="h-8 w-8 text-farm-harvest" />
@@ -237,7 +238,7 @@ export default function Finances() {
                     </div>
                     <div className="text-right">
                       <p className={`text-lg font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                        {transaction.type === 'income' ? '+' : '-'}${transaction.amount.toLocaleString()}
+                        {transaction.type === 'income' ? '+' : '-'}{formatKES(transaction.amount).replace('KSh ', '')}
                       </p>
                       <div className="flex gap-2 mt-1">
                         <Badge className={getTypeColor(transaction.type)}>

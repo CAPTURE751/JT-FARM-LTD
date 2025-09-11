@@ -1,5 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatKES } from "@/lib/currency";
+import { AdminQuickAccess } from "@/components/AdminQuickAccess";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Wheat, 
   Beef, 
@@ -12,7 +15,6 @@ import {
   LogOut
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCrops } from "@/hooks/useCrops";
 import { useLivestock } from "@/hooks/useLivestock";
 import { useSales } from "@/hooks/useSales";
@@ -44,7 +46,7 @@ const livestockData = [
 ];
 
 export function Dashboard() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, hasRole } = useAuth();
   const { crops, isLoading: cropsLoading } = useCrops();
   const { livestock, isLoading: livestockLoading } = useLivestock();
   const { analytics, isLoading: salesLoading } = useSales();
@@ -149,7 +151,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${salesLoading ? '...' : analytics?.totalRevenue?.toLocaleString() || '0'}
+              {formatKES(analytics?.totalRevenue || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               Total sales revenue
@@ -322,6 +324,13 @@ export function Dashboard() {
         </Card>
 
       </div>
+      
+      {/* Admin Quick Access */}
+      {hasRole('admin') && (
+        <div className="mt-8">
+          <AdminQuickAccess />
+        </div>
+      )}
     </div>
   );
 }

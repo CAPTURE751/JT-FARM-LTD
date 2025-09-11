@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatKES } from "@/lib/currency";
+import { FARM_BRANDING } from "@/lib/constants";
 import { 
   BarChart3,
   Download,
@@ -70,7 +72,7 @@ export default function Reports() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-            <p className="text-gray-600 mt-1">Track performance and generate insights</p>
+            <p className="text-gray-600 mt-1">{FARM_BRANDING.name} - Comprehensive farm operation reports</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline">
@@ -184,7 +186,7 @@ export default function Reports() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold text-farm-green">$74,000</p>
+                  <p className="text-2xl font-bold text-farm-green">{formatKES(74000)}</p>
                   <Badge className="mt-1 bg-green-100 text-green-800">+12.5%</Badge>
                 </div>
                 <TrendingUp className="h-8 w-8 text-farm-green" />
@@ -197,7 +199,7 @@ export default function Reports() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Expenses</p>
-                  <p className="text-2xl font-bold text-farm-barn">$47,200</p>
+                  <p className="text-2xl font-bold text-farm-barn">{formatKES(47200)}</p>
                   <Badge className="mt-1 bg-yellow-100 text-yellow-800">+8.2%</Badge>
                 </div>
                 <DollarSign className="h-8 w-8 text-farm-barn" />
@@ -210,7 +212,7 @@ export default function Reports() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Net Profit</p>
-                  <p className="text-2xl font-bold text-farm-harvest">$26,800</p>
+                  <p className="text-2xl font-bold text-farm-harvest">{formatKES(26800)}</p>
                   <Badge className="mt-1 bg-green-100 text-green-800">+18.3%</Badge>
                 </div>
                 <BarChart3 className="h-8 w-8 text-farm-harvest" />
