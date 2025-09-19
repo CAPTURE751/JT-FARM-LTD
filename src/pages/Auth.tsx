@@ -56,17 +56,27 @@ export default function Auth() {
   const handleQuickAdminLogin = async () => {
     setIsLoading(true);
     
-    // Create admin user if doesn't exist, then sign in
-    const { error: signUpError } = await signUp('admin@jefftricks.com', 'admin123', 'Administrator', 'admin');
+    // Use a valid email format for admin
+    const adminEmail = 'admin@jefftricksfarm.com';
+    const adminPassword = 'admin123';
     
-    if (signUpError && !signUpError.message.includes('already registered')) {
-      console.error('Failed to create admin:', signUpError);
-      setIsLoading(false);
-      return;
+    // Try to sign in first
+    const { error: signInError } = await signIn(adminEmail, adminPassword);
+    
+    if (signInError) {
+      // If sign in fails, create the admin user
+      const { error: signUpError } = await signUp(adminEmail, adminPassword, 'Administrator', 'admin');
+      
+      if (signUpError && !signUpError.message.includes('already registered')) {
+        console.error('Failed to create admin:', signUpError);
+        setIsLoading(false);
+        return;
+      }
+      
+      // After signup, try to sign in again
+      await signIn(adminEmail, adminPassword);
     }
     
-    // Sign in as admin
-    await signIn('admin@jefftricks.com', 'admin123');
     setIsLoading(false);
   };
 
@@ -201,7 +211,7 @@ export default function Auth() {
               Login as Administrator
             </Button>
             <p className="text-xs text-muted-foreground text-center mt-2">
-              Demo: admin@jefftricks.com / admin123
+              Demo: admin@jefftricksfarm.com / admin123
             </p>
           </div>
         </CardContent>
