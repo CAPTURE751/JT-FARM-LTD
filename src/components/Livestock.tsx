@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useLivestock } from "@/hooks/useLivestock";
+import { LivestockForm } from "@/components/LivestockForm";
 import { 
   Plus, 
   Search, 
@@ -11,57 +14,10 @@ import {
   MapPin,
   Activity,
   Heart,
-  Scale
+  Scale,
+  Loader2
 } from "lucide-react";
 
-// Mock livestock data
-const livestock = [
-  {
-    id: 1,
-    name: "Bessie",
-    type: "Cattle",
-    breed: "Holstein",
-    tag: "C001",
-    gender: "Female",
-    birthDate: "2022-03-15",
-    shelter: "Barn A",
-    weight: "1200 lbs",
-    status: "healthy",
-    productivity: "28L/day",
-    lastCheckup: "2024-06-15",
-    image: "photo-1472396961693-142e6e269027"
-  },
-  {
-    id: 2,
-    name: "Charlie",
-    type: "Pig",
-    breed: "Yorkshire",
-    tag: "P001",
-    gender: "Male",
-    birthDate: "2024-01-10",
-    shelter: "Pen B",
-    weight: "180 lbs",
-    status: "healthy",
-    productivity: "Growing",
-    lastCheckup: "2024-06-20",
-    image: "photo-1465379944081-7f47de8d74ac"
-  },
-  {
-    id: 3,
-    name: "Henrietta",
-    type: "Chicken",
-    breed: "Rhode Island Red",
-    tag: "H001",
-    gender: "Female",
-    birthDate: "2023-08-22",
-    shelter: "Coop C",
-    weight: "6 lbs",
-    status: "needs-attention",
-    productivity: "5 eggs/week",
-    lastCheckup: "2024-06-10",
-    image: "photo-1535268647677-300dbf3d78d1"
-  }
-];
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -84,18 +40,34 @@ const getTypeIcon = (type: string) => {
 
 export function Livestock() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { livestock, isLoading, createLivestock, isCreating } = useLivestock();
   
   const filteredLivestock = livestock.filter(animal =>
-    animal.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    animal.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    animal.breed.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    animal.tag.toLowerCase().includes(searchTerm.toLowerCase())
+    (animal.type?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+    (animal.breed?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+    animal.farm_location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const calculateAge = (birthDate: string) => {
-    const birth = new Date(birthDate);
+  const handleCreateLivestock = async (livestockData: any) => {
+    createLivestock(livestockData);
+    setIsDialogOpen(false);
+  };
+
+  // Calculate stats from real data
+  const totalAnimals = livestock.length;
+  const healthyAnimals = livestock.filter(animal => animal.health_status === 'healthy').length;
+  const needAttentionAnimals = livestock.filter(animal => animal.health_status === 'needs_attention' || animal.health_status === 'sick').length;
+  const avgWeight = livestock.length > 0 
+    ? livestock.reduce((sum, animal) => sum + (animal.weight || 0), 0) / livestock.length 
+    : 0;
+
+  const calculateAge = (purchaseDate: string | null) => {
+    if (!purchaseDate) return 'Unknown';
+    
+    const purchase = new Date(purchaseDate);
     const today = new Date();
-    const diffTime = Math.abs(today.getTime() - birth.getTime());
+    const diffTime = Math.abs(today.getTime() - purchase.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 30) return `${diffDays} days`;
@@ -111,10 +83,20 @@ export function Livestock() {
           <h1 className="text-2xl font-bold text-foreground">Livestock Management</h1>
           <p className="text-muted-foreground">Monitor and care for your animals</p>
         </div>
-        <Button className="bg-farm-barn hover:bg-farm-barn/90 text-white">
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Animal
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-farm-barn hover:bg-farm-barn/90 text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Animal
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add New Animal</DialogTitle>
+            </DialogHeader>
+            <LivestockForm onSubmit={handleCreateLivestock} isLoading={isCreating} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search and Filters */}
@@ -146,7 +128,7 @@ export function Livestock() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Animals</p>
-                <p className="text-2xl font-bold">{livestock.length}</p>
+                <p className="text-2xl font-bold">{totalAnimals}</p>
               </div>
               <Beef className="h-8 w-8 text-farm-barn" />
             </div>
@@ -158,7 +140,7 @@ export function Livestock() {
               <div>
                 <p className="text-sm text-muted-foreground">Healthy Animals</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {livestock.filter(a => a.status === 'healthy').length}
+                  {healthyAnimals}
                 </p>
               </div>
               <Heart className="h-8 w-8 text-green-600" />
@@ -171,7 +153,7 @@ export function Livestock() {
               <div>
                 <p className="text-sm text-muted-foreground">Need Attention</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {livestock.filter(a => a.status === 'needs-attention').length}
+                  {needAttentionAnimals}
                 </p>
               </div>
               <Activity className="h-8 w-8 text-yellow-600" />
@@ -183,7 +165,7 @@ export function Livestock() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Avg Weight</p>
-                <p className="text-2xl font-bold">462 lbs</p>
+                <p className="text-2xl font-bold">{avgWeight > 0 ? `${Math.round(avgWeight)} lbs` : 'N/A'}</p>
               </div>
               <Scale className="h-8 w-8 text-farm-sage" />
             </div>
@@ -191,81 +173,92 @@ export function Livestock() {
         </Card>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-farm-barn" />
+          <span className="ml-2 text-muted-foreground">Loading livestock...</span>
+        </div>
+      )}
+
       {/* Livestock Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredLivestock.map((animal) => (
-          <Card key={animal.id} className="hover:shadow-lg transition-shadow group">
-            <div className="relative h-48 bg-gradient-to-br from-farm-earth to-farm-sage rounded-t-lg overflow-hidden">
-              <img 
-                src={`https://images.unsplash.com/${animal.image}?w=400&h=200&fit=crop`}
-                alt={animal.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute top-4 left-4">
-                <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 text-2xl">
-                  {getTypeIcon(animal.type)}
+      {!isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredLivestock.map((animal) => (
+            <Card key={animal.id} className="hover:shadow-lg transition-shadow group">
+              <div className="relative h-48 bg-gradient-to-br from-farm-earth to-farm-sage rounded-t-lg overflow-hidden">
+                <img 
+                  src={`https://images.unsplash.com/photo-1472396961693-142e6e269027?w=400&h=200&fit=crop`}
+                  alt={animal.type}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-4 left-4">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 text-2xl">
+                    {getTypeIcon(animal.type)}
+                  </div>
                 </div>
-              </div>
-              <div className="absolute top-4 right-4">
-                <Badge className={getStatusColor(animal.status)}>
-                  {animal.status === 'healthy' ? 'Healthy' : 'Needs Attention'}
-                </Badge>
-              </div>
-            </div>
-            
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{animal.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{animal.breed} {animal.type}</p>
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  #{animal.tag}
-                </Badge>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{calculateAge(animal.birthDate)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Scale className="h-4 w-4 text-muted-foreground" />
-                  <span>{animal.weight}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{animal.shelter}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                  <span>{animal.productivity}</span>
+                <div className="absolute top-4 right-4">
+                  <Badge className={getStatusColor(animal.health_status || 'healthy')}>
+                    {animal.health_status === 'healthy' ? 'Healthy' : 
+                     animal.health_status === 'sick' ? 'Sick' : 'Needs Attention'}
+                  </Badge>
                 </div>
               </div>
               
-              <div className="pt-2 border-t">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Last Checkup:</span>
-                  <span className="font-medium">
-                    {new Date(animal.lastCheckup).toLocaleDateString()}
-                  </span>
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{animal.type}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{animal.breed} {animal.gender && `• ${animal.gender}`}</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Age: {animal.age || 'N/A'}
+                  </Badge>
                 </div>
-              </div>
+              </CardHeader>
               
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" variant="outline" className="flex-1">
-                  Health Log
-                </Button>
-                <Button size="sm" className="flex-1 bg-farm-barn hover:bg-farm-barn/90 text-white">
-                  Update
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>{animal.purchase_date ? calculateAge(animal.purchase_date) : 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-muted-foreground" />
+                    <span>{animal.weight ? `${animal.weight} lbs` : 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>{animal.farm_location}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                    <span>{animal.health_status || 'Unknown'}</span>
+                  </div>
+                </div>
+                
+                {animal.purchase_price && (
+                  <div className="pt-2 border-t">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Purchase Price:</span>
+                      <span className="font-medium">${animal.purchase_price.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" variant="outline" className="flex-1">
+                    Health Log
+                  </Button>
+                  <Button size="sm" className="flex-1 bg-farm-barn hover:bg-farm-barn/90 text-white">
+                    Update
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {filteredLivestock.length === 0 && (
         <Card>
@@ -275,10 +268,20 @@ export function Livestock() {
             <p className="text-muted-foreground mb-4">
               {searchTerm ? "Try adjusting your search terms" : "Get started by adding your first animal"}
             </p>
-            <Button className="bg-farm-barn hover:bg-farm-barn/90 text-white">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Animal
-            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-farm-barn hover:bg-farm-barn/90 text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Animal
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Add New Animal</DialogTitle>
+                </DialogHeader>
+                <LivestockForm onSubmit={handleCreateLivestock} isLoading={isCreating} />
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       )}
