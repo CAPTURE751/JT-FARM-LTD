@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useCrops } from "@/hooks/useCrops";
+import { CropForm } from "@/components/CropForm";
 import { 
   Plus, 
   Search, 
@@ -13,54 +16,10 @@ import {
   DollarSign,
   TrendingUp,
   Droplets,
-  Sun
+  Sun,
+  Loader2
 } from "lucide-react";
 
-// Mock crop data
-const crops = [
-  {
-    id: 1,
-    name: "Winter Wheat",
-    variety: "Hard Red Winter",
-    location: "Field A-1",
-    plantingDate: "2024-10-15",
-    harvestDate: "2024-07-20",
-    stage: "Growing",
-    area: "25 acres",
-    expectedYield: "2,500 bushels",
-    expenses: 1250,
-    status: "healthy",
-    image: "photo-1466721591366-2d5fba72006d"
-  },
-  {
-    id: 2,
-    name: "Sweet Corn",
-    variety: "Golden Bantam",
-    location: "Field B-2",
-    plantingDate: "2024-05-01",
-    harvestDate: "2024-08-15",
-    stage: "Flowering",
-    area: "15 acres",
-    expectedYield: "1,800 dozen",
-    expenses: 890,
-    status: "needs-attention",
-    image: "photo-1493962853295-0fd70327578a"
-  },
-  {
-    id: 3,
-    name: "Soybeans",
-    variety: "Roundup Ready",
-    location: "Field C-1",
-    plantingDate: "2024-05-20",
-    harvestDate: "2024-09-30",
-    stage: "Pod Development",
-    area: "40 acres",
-    expectedYield: "2,000 bushels",
-    expenses: 2100,
-    status: "healthy",
-    image: "photo-1485833077593-4278bba3f11f"
-  }
-];
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -84,12 +43,24 @@ const getStageColor = (stage: string) => {
 
 export function Crops() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { crops, isLoading, createCrop, isCreating } = useCrops();
   
   const filteredCrops = crops.filter(crop =>
     crop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    crop.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    crop.location.toLowerCase().includes(searchTerm.toLowerCase())
+    crop.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    crop.farm_location.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleCreateCrop = async (cropData: any) => {
+    createCrop(cropData);
+    setIsDialogOpen(false);
+  };
+
+  // Calculate stats from real data
+  const totalCrops = crops.length;
+  const healthyCrops = crops.filter(crop => crop.status === 'healthy').length;
+  const totalYield = crops.reduce((sum, crop) => sum + (crop.yield_quantity || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -99,10 +70,20 @@ export function Crops() {
           <h1 className="text-2xl font-bold text-foreground">Crop Management</h1>
           <p className="text-muted-foreground">Track and manage your crops</p>
         </div>
-        <Button className="bg-farm-green hover:bg-farm-green/90">
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Crop
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-farm-green hover:bg-farm-green/90">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Crop
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add New Crop</DialogTitle>
+            </DialogHeader>
+            <CropForm onSubmit={handleCreateCrop} isLoading={isCreating} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search and Filters */}
@@ -134,7 +115,7 @@ export function Crops() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Crops</p>
-                <p className="text-2xl font-bold">{crops.length}</p>
+                <p className="text-2xl font-bold">{totalCrops}</p>
               </div>
               <Wheat className="h-8 w-8 text-farm-green" />
             </div>
@@ -144,8 +125,8 @@ export function Crops() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Area</p>
-                <p className="text-2xl font-bold">80 acres</p>
+                <p className="text-sm text-muted-foreground">Healthy Crops</p>
+                <p className="text-2xl font-bold">{healthyCrops}</p>
               </div>
               <MapPin className="h-8 w-8 text-farm-sage" />
             </div>
@@ -155,8 +136,8 @@ export function Crops() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Investment</p>
-                <p className="text-2xl font-bold">$4,240</p>
+                <p className="text-sm text-muted-foreground">Total Yield</p>
+                <p className="text-2xl font-bold">{totalYield.toLocaleString()}</p>
               </div>
               <DollarSign className="h-8 w-8 text-farm-harvest" />
             </div>
@@ -166,8 +147,8 @@ export function Crops() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Expected Yield</p>
-                <p className="text-2xl font-bold">95%</p>
+                <p className="text-sm text-muted-foreground">Active Seasons</p>
+                <p className="text-2xl font-bold">{new Set(crops.filter(c => c.season).map(c => c.season)).size}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
@@ -175,74 +156,94 @@ export function Crops() {
         </Card>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-farm-green" />
+          <span className="ml-2 text-muted-foreground">Loading crops...</span>
+        </div>
+      )}
+
       {/* Crops Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCrops.map((crop) => (
-          <Card key={crop.id} className="hover:shadow-lg transition-shadow group">
-            <div className="relative h-48 bg-gradient-to-br from-farm-earth to-farm-sage rounded-t-lg overflow-hidden">
-              <img 
-                src={`https://images.unsplash.com/${crop.image}?w=400&h=200&fit=crop`}
-                alt={crop.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute top-4 right-4 flex gap-2">
-                <Badge className={getStatusColor(crop.status)}>
-                  {crop.status === 'healthy' ? 'Healthy' : 'Needs Attention'}
-                </Badge>
-              </div>
-            </div>
-            
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{crop.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{crop.variety}</p>
-                </div>
-                <Badge className={getStageColor(crop.stage)} variant="outline">
-                  {crop.stage}
-                </Badge>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{crop.location}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Sun className="h-4 w-4 text-muted-foreground" />
-                  <span>{crop.area}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{new Date(crop.plantingDate).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>${crop.expenses}</span>
+      {!isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCrops.map((crop) => (
+            <Card key={crop.id} className="hover:shadow-lg transition-shadow group">
+              <div className="relative h-48 bg-gradient-to-br from-farm-earth to-farm-sage rounded-t-lg overflow-hidden">
+                <img 
+                  src={`https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&h=200&fit=crop`}
+                  alt={crop.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <Badge className={getStatusColor(crop.status || 'healthy')}>
+                    {crop.status === 'planted' ? 'Planted' : 
+                     crop.status === 'growing' ? 'Growing' : 
+                     crop.status === 'harvested' ? 'Harvested' : 'Healthy'}
+                  </Badge>
                 </div>
               </div>
               
-              <div className="pt-2 border-t">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Expected Yield:</span>
-                  <span className="font-medium">{crop.expectedYield}</span>
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{crop.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{crop.type}</p>
+                  </div>
+                  {crop.season && (
+                    <Badge variant="outline">
+                      {crop.season}
+                    </Badge>
+                  )}
                 </div>
-              </div>
+              </CardHeader>
               
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" variant="outline" className="flex-1">
-                  View Details
-                </Button>
-                <Button size="sm" className="flex-1 bg-farm-green hover:bg-farm-green/90">
-                  Add Entry
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>{crop.farm_location}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Sun className="h-4 w-4 text-muted-foreground" />
+                    <span>{crop.status}</span>
+                  </div>
+                  {crop.planting_date && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>{new Date(crop.planting_date).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {crop.yield_quantity && (
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span>{crop.yield_quantity} {crop.yield_unit}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {crop.harvest_date && (
+                  <div className="pt-2 border-t">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Harvest Date:</span>
+                      <span className="font-medium">{new Date(crop.harvest_date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" variant="outline" className="flex-1">
+                    View Details
+                  </Button>
+                  <Button size="sm" className="flex-1 bg-farm-green hover:bg-farm-green/90">
+                    Update
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {filteredCrops.length === 0 && (
         <Card>
@@ -252,10 +253,20 @@ export function Crops() {
             <p className="text-muted-foreground mb-4">
               {searchTerm ? "Try adjusting your search terms" : "Get started by adding your first crop"}
             </p>
-            <Button className="bg-farm-green hover:bg-farm-green/90">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Crop
-            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-farm-green hover:bg-farm-green/90">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Crop
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Add New Crop</DialogTitle>
+                </DialogHeader>
+                <CropForm onSubmit={handleCreateCrop} isLoading={isCreating} />
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       )}
