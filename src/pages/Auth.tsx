@@ -55,6 +55,17 @@ export default function Auth() {
 
   const handleQuickAdminLogin = async () => {
     setIsLoading(true);
+    
+    // Create admin user if doesn't exist, then sign in
+    const { error: signUpError } = await signUp('admin@jefftricks.com', 'admin123', 'Administrator', 'admin');
+    
+    if (signUpError && !signUpError.message.includes('already registered')) {
+      console.error('Failed to create admin:', signUpError);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Sign in as admin
     await signIn('admin@jefftricks.com', 'admin123');
     setIsLoading(false);
   };
