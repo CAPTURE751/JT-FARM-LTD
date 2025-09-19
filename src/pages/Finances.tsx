@@ -3,7 +3,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { formatKES } from "@/lib/currency";
+import { useSales } from "@/hooks/useSales";
+import { usePurchases } from "@/hooks/usePurchases";
+import { TransactionForm } from "@/components/TransactionForm";
 import { 
   DollarSign,
   Plus,
@@ -12,85 +16,55 @@ import {
   Receipt,
   CreditCard,
   Calendar,
-  Filter
+  Filter,
+  Loader2
 } from "lucide-react";
 import { Layout } from "@/components/Layout";
 
-interface Transaction {
-  id: number;
-  type: 'income' | 'expense';
-  category: string;
-  description: string;
-  amount: number;
-  date: string;
-  status: 'completed' | 'pending';
-}
-
-const mockTransactions: Transaction[] = [
-  {
-    id: 1,
-    type: 'income',
-    category: 'Crop Sales',
-    description: 'Wheat harvest - batch #001',
-    amount: 5200,
-    date: '2024-01-15',
-    status: 'completed'
-  },
-  {
-    id: 2,
-    type: 'expense',
-    category: 'Seeds',
-    description: 'Corn seeds for spring planting',
-    amount: 1800,
-    date: '2024-01-12',
-    status: 'completed'
-  },
-  {
-    id: 3,
-    type: 'expense',
-    category: 'Labor',
-    description: 'Harvesting crew payment',
-    amount: 2400,
-    date: '2024-01-10',
-    status: 'completed'
-  },
-  {
-    id: 4,
-    type: 'income',
-    category: 'Livestock',
-    description: 'Dairy products sale',
-    amount: 800,
-    date: '2024-01-08',
-    status: 'pending'
-  },
-  {
-    id: 5,
-    type: 'expense',
-    category: 'Equipment',
-    description: 'Tractor maintenance',
-    amount: 650,
-    date: '2024-01-05',
-    status: 'completed'
-  }
-];
 
 export default function Finances() {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const { sales, analytics: salesAnalytics, isLoading: salesLoading } = useSales();
+  const { purchases, analytics: purchaseAnalytics, isLoading: purchasesLoading } = usePurchases();
 
-  const filteredTransactions = transactions.filter(t => 
+  const isLoading = salesLoading || purchasesLoading;
+
+  // Combine sales and purchases into transactions
+  const allTransactions = [
+    ...sales.map(sale => ({
+      id: sale.id,
+      type: 'income' as const,
+      category: sale.product_type,
+      description: `${sale.product_name} - ${sale.buyer}`,
+      amount: sale.total_amount || 0,
+      date: sale.sale_date,
+      status: sale.payment_status === 'paid' ? 'completed' as const : 'pending' as const,
+      originalData: sale
+    })),
+    ...purchases.map(purchase => ({
+      id: purchase.id,
+      type: 'expense' as const,
+      category: purchase.category,
+      description: `${purchase.item_name} - ${purchase.supplier}`,
+      amount: purchase.total_cost || 0,
+      date: purchase.purchase_date,
+      status: purchase.payment_status === 'paid' ? 'completed' as const : 'pending' as const,
+      originalData: purchase
+    }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const filteredTransactions = allTransactions.filter(t => 
     filter === 'all' || t.type === filter
   );
 
-  const totalIncome = transactions
-    .filter(t => t.type === 'income' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
-
+  const totalIncome = salesAnalytics?.totalRevenue || 0;
+  const totalExpenses = purchaseAnalytics?.totalExpenses || 0;
   const netProfit = totalIncome - totalExpenses;
+  const pendingAmount = allTransactions
+    .filter(t => t.status === 'pending')
+    .reduce((sum, t) => sum + t.amount, 0);
 
   const getTypeColor = (type: string) => {
     return type === 'income' 
@@ -113,10 +87,20 @@ export default function Finances() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Financial Management</h1>
             <p className="text-gray-600 mt-1">Track income, expenses, and profitability</p>
           </div>
-          <Button className="bg-farm-green hover:bg-farm-green/90">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Transaction
-          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-farm-green hover:bg-farm-green/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Transaction
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Add New Transaction</DialogTitle>
+              </DialogHeader>
+              <TransactionForm onClose={() => setIsDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Financial Summary */}
@@ -165,7 +149,7 @@ export default function Finances() {
                 <div>
                   <p className="text-sm text-muted-foreground">Pending</p>
                   <p className="text-2xl font-bold text-farm-harvest">
-                    {formatKES(transactions.filter(t => t.status === 'pending').reduce((sum, t) => sum + t.amount, 0))}
+                    {formatKES(pendingAmount)}
                   </p>
                 </div>
                 <Receipt className="h-8 w-8 text-farm-harvest" />
@@ -213,46 +197,55 @@ export default function Finances() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {filteredTransactions.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No transactions found</p>
-              ) : (
-                filteredTransactions.map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-full ${transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'}`}>
-                        {transaction.type === 'income' ? (
-                          <TrendingUp className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-600" />
-                        )}
+            {isLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-farm-green" />
+                <span className="ml-2 text-muted-foreground">Loading transactions...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredTransactions.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No transactions found</p>
+                ) : (
+                  filteredTransactions.map((transaction) => (
+                    <div key={`${transaction.type}-${transaction.id}`} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-2 rounded-full ${transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'}`}>
+                          {transaction.type === 'income' ? (
+                            <TrendingUp className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <TrendingDown className="h-4 w-4 text-red-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium">{transaction.description}</p>
+                          <p className="text-sm text-muted-foreground">{transaction.category}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(transaction.date).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{transaction.description}</p>
-                        <p className="text-sm text-muted-foreground">{transaction.category}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">{transaction.date}</span>
+                      <div className="text-right">
+                        <p className={`text-lg font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatKES(transaction.amount).replace('KSh ', '')}
+                        </p>
+                        <div className="flex gap-2 mt-1">
+                          <Badge className={getTypeColor(transaction.type)}>
+                            {transaction.type}
+                          </Badge>
+                          <Badge className={getStatusColor(transaction.status)}>
+                            {transaction.status}
+                          </Badge>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-lg font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                        {transaction.type === 'income' ? '+' : '-'}{formatKES(transaction.amount).replace('KSh ', '')}
-                      </p>
-                      <div className="flex gap-2 mt-1">
-                        <Badge className={getTypeColor(transaction.type)}>
-                          {transaction.type}
-                        </Badge>
-                        <Badge className={getStatusColor(transaction.status)}>
-                          {transaction.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
