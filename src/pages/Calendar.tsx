@@ -12,62 +12,48 @@ import {
   Syringe,
   Droplets,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle
 } from "lucide-react";
 import { Layout } from "@/components/Layout";
-
-interface FarmTask {
-  id: number;
-  title: string;
-  date: Date;
-  type: 'crop' | 'livestock' | 'maintenance' | 'harvest';
-  priority: 'low' | 'medium' | 'high';
-  completed: boolean;
-  description?: string;
-}
-
-const mockTasks: FarmTask[] = [
-  {
-    id: 1,
-    title: "Fertilize corn field A",
-    date: new Date(),
-    type: 'crop',
-    priority: 'high',
-    completed: false,
-    description: "Apply nitrogen fertilizer to north field"
-  },
-  {
-    id: 2,
-    title: "Vaccinate cattle group B",
-    date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-    type: 'livestock',
-    priority: 'high',
-    completed: false,
-    description: "Annual vaccination schedule"
-  },
-  {
-    id: 3,
-    title: "Harvest wheat section 3",
-    date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // In 3 days
-    type: 'harvest',
-    priority: 'medium',
-    completed: false,
-    description: "Ready for harvest based on moisture content"
-  },
-  {
-    id: 4,
-    title: "Repair irrigation system",
-    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // In a week
-    type: 'maintenance',
-    priority: 'medium',
-    completed: false,
-    description: "Fix leaky pipes in section 2"
-  }
-];
+import { useTasks, useUpdateTask, Task } from "@/hooks/useTasks";
+import { TaskForm } from "@/components/TaskForm";
 
 export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [tasks, setTasks] = useState<FarmTask[]>(mockTasks);
+  const { tasks: backendTasks, isLoading } = useTasks();
+  const updateTask = useUpdateTask();
+
+  // Convert backend tasks to the format expected by the UI
+  const tasks = backendTasks.map(task => ({
+    id: parseInt(task.id.slice(-8), 16), // Convert UUID to number for compatibility
+    title: task.title,
+    date: new Date(task.task_date),
+    type: task.task_type,
+    priority: task.priority,
+    completed: task.completed,
+    description: task.description,
+    originalId: task.id // Keep original UUID for updates
+  })) as Array<{
+    id: number;
+    title: string;
+    date: Date;
+    type: 'crop' | 'livestock' | 'maintenance' | 'harvest';
+    priority: 'low' | 'medium' | 'high';
+    completed: boolean;
+    description?: string;
+    originalId: string;
+  }>;
+
+  const handleToggleComplete = async (taskId: string) => {
+    const task = backendTasks.find(t => t.id === taskId);
+    if (task) {
+      await updateTask.mutateAsync({
+        id: taskId,
+        updates: { completed: !task.completed }
+      });
+    }
+  };
 
   const getTasksForDate = (date: Date) => {
     return tasks.filter(task => 
@@ -122,10 +108,7 @@ export default function CalendarPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Farm Calendar</h1>
             <p className="text-gray-600 mt-1">Schedule and track your farm activities</p>
           </div>
-          <Button className="bg-farm-green hover:bg-farm-green/90">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Task
-          </Button>
+          <TaskForm />
         </div>
 
         {/* Overdue Tasks Alert */}
@@ -184,13 +167,23 @@ export default function CalendarPage() {
                           <div className="flex items-center gap-3">
                             {getTaskIcon(task.type)}
                             <div>
-                              <p className="font-medium">{task.title}</p>
+                              <p className={`font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                {task.title}
+                              </p>
                               {task.description && (
                                 <p className="text-sm text-muted-foreground">{task.description}</p>
                               )}
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleComplete(task.originalId)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <CheckCircle className={`h-4 w-4 ${task.completed ? 'text-green-600' : 'text-muted-foreground'}`} />
+                            </Button>
                             <Badge className={getTypeColor(task.type)}>
                               {task.type}
                             </Badge>
@@ -217,7 +210,9 @@ export default function CalendarPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {upcomingTasks.length === 0 ? (
+                {isLoading ? (
+                  <p className="text-muted-foreground text-sm">Loading tasks...</p>
+                ) : upcomingTasks.length === 0 ? (
                   <p className="text-muted-foreground text-sm">No upcoming tasks</p>
                 ) : (
                   upcomingTasks.map((task) => (
@@ -226,7 +221,9 @@ export default function CalendarPage() {
                         {getTaskIcon(task.type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{task.title}</p>
+                        <p className={`font-medium text-sm ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
+                          {task.title}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {task.date.toLocaleDateString()}
                         </p>
@@ -239,6 +236,14 @@ export default function CalendarPage() {
                           </Badge>
                         </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleComplete(task.originalId)}
+                        className="h-8 w-8 p-0 flex-shrink-0"
+                      >
+                        <CheckCircle className={`h-4 w-4 ${task.completed ? 'text-green-600' : 'text-muted-foreground'}`} />
+                      </Button>
                     </div>
                   ))
                 )}
