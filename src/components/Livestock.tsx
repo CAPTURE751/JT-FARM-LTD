@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useLivestock } from "@/hooks/useLivestock";
 import { LivestockForm } from "@/components/LivestockForm";
+import { calculateAge } from "@/lib/age-calculator";
 import { 
   Plus, 
   Search, 
@@ -15,7 +16,8 @@ import {
   Activity,
   Heart,
   Scale,
-  Loader2
+  Loader2,
+  Baby
 } from "lucide-react";
 
 
@@ -62,18 +64,6 @@ export function Livestock() {
     ? livestock.reduce((sum, animal) => sum + (animal.weight || 0), 0) / livestock.length 
     : 0;
 
-  const calculateAge = (purchaseDate: string | null) => {
-    if (!purchaseDate) return 'Unknown';
-    
-    const purchase = new Date(purchaseDate);
-    const today = new Date();
-    const diffTime = Math.abs(today.getTime() - purchase.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 30) return `${diffDays} days`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months`;
-    return `${Math.floor(diffDays / 365)} years`;
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -212,28 +202,42 @@ export function Livestock() {
                     <p className="text-sm text-muted-foreground">{animal.breed} {animal.gender && `• ${animal.gender}`}</p>
                   </div>
                   <Badge variant="outline" className="text-xs">
-                    Age: {animal.age || 'N/A'}
+                    Age: {calculateAge(animal.date_of_birth, animal.date_of_birth_on_farm)}
                   </Badge>
                 </div>
               </CardHeader>
               
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>{animal.purchase_date ? calculateAge(animal.purchase_date) : 'N/A'}</span>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Baby className="h-4 w-4 text-muted-foreground" />
+                      <span>Age: {calculateAge(animal.date_of_birth, animal.date_of_birth_on_farm)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Scale className="h-4 w-4 text-muted-foreground" />
+                      <span>{animal.weight ? `${animal.weight} lbs` : 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span>{animal.farm_location}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                      <span>{animal.health_status || 'Unknown'}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Scale className="h-4 w-4 text-muted-foreground" />
-                    <span>{animal.weight ? `${animal.weight} lbs` : 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{animal.farm_location}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                    <span>{animal.health_status || 'Unknown'}</span>
+                  
+                  <div className="pt-2 border-t text-xs text-muted-foreground space-y-1">
+                    {animal.date_of_birth && (
+                      <div>DOB: {new Date(animal.date_of_birth).toLocaleDateString()}</div>
+                    )}
+                    {animal.date_of_arrival_at_farm && (
+                      <div>Arrived: {new Date(animal.date_of_arrival_at_farm).toLocaleDateString()}</div>
+                    )}
+                    {animal.date_of_birth_on_farm && (
+                      <div>Born on farm: {new Date(animal.date_of_birth_on_farm).toLocaleDateString()}</div>
+                    )}
                   </div>
                 </div>
                 

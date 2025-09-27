@@ -161,6 +161,9 @@ export type Database = {
           breed: string | null
           created_at: string
           created_by: string
+          date_of_arrival_at_farm: string | null
+          date_of_birth: string | null
+          date_of_birth_on_farm: string | null
           farm_location: string
           gender: string | null
           health_status: string | null
@@ -177,6 +180,9 @@ export type Database = {
           breed?: string | null
           created_at?: string
           created_by: string
+          date_of_arrival_at_farm?: string | null
+          date_of_birth?: string | null
+          date_of_birth_on_farm?: string | null
           farm_location: string
           gender?: string | null
           health_status?: string | null
@@ -193,6 +199,9 @@ export type Database = {
           breed?: string | null
           created_at?: string
           created_by?: string
+          date_of_arrival_at_farm?: string | null
+          date_of_birth?: string | null
+          date_of_birth_on_farm?: string | null
           farm_location?: string
           gender?: string | null
           health_status?: string | null

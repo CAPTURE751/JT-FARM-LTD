@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { calculateAge } from "@/lib/age-calculator";
 
 interface LivestockFormData {
   type: string;
@@ -18,6 +19,9 @@ interface LivestockFormData {
   age?: number;
   weight?: number;
   health_status: string;
+  date_of_birth?: Date;
+  date_of_arrival_at_farm?: Date;
+  date_of_birth_on_farm?: Date;
   purchase_date?: Date;
   purchase_price?: number;
   notes?: string;
@@ -40,11 +44,29 @@ export function LivestockForm({ onSubmit, isLoading, initialData }: LivestockFor
     age: initialData?.age || undefined,
     weight: initialData?.weight || undefined,
     purchase_price: initialData?.purchase_price || undefined,
+    date_of_birth: initialData?.date_of_birth,
+    date_of_arrival_at_farm: initialData?.date_of_arrival_at_farm,
+    date_of_birth_on_farm: initialData?.date_of_birth_on_farm,
     purchase_date: initialData?.purchase_date,
   });
 
+  const [calculatedAge, setCalculatedAge] = useState<string>('');
+
+  // Calculate age whenever birth dates change
+  useEffect(() => {
+    const age = calculateAge(formData.date_of_birth, formData.date_of_birth_on_farm);
+    setCalculatedAge(age);
+  }, [formData.date_of_birth, formData.date_of_birth_on_farm]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that at least one date is provided
+    if (!formData.date_of_arrival_at_farm && !formData.date_of_birth_on_farm) {
+      alert('Please provide either a Date of Arrival at Farm or Date of Birth on Farm');
+      return;
+    }
+    
     onSubmit(formData);
   };
 
@@ -109,14 +131,13 @@ export function LivestockForm({ onSubmit, isLoading, initialData }: LivestockFor
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="age">Age (months)</Label>
+          <Label htmlFor="calculated_age">Age (Auto-calculated)</Label>
           <Input
-            id="age"
-            type="number"
-            value={formData.age || ""}
-            onChange={(e) => handleInputChange("age", e.target.value ? Number(e.target.value) : undefined)}
-            placeholder="Age in months"
-            min="0"
+            id="calculated_age"
+            value={calculatedAge}
+            placeholder="Will be calculated from birth date"
+            disabled
+            className="bg-muted"
           />
         </div>
 
@@ -162,31 +183,121 @@ export function LivestockForm({ onSubmit, isLoading, initialData }: LivestockFor
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Purchase Date</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !formData.purchase_date && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {formData.purchase_date ? format(formData.purchase_date, "PPP") : "Pick a date"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              mode="single"
-              selected={formData.purchase_date}
-              onSelect={(date) => handleInputChange("purchase_date", date)}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Date of Birth</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.date_of_birth && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.date_of_birth ? format(formData.date_of_birth, "PPP") : "Pick a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={formData.date_of_birth}
+                onSelect={(date) => handleInputChange("date_of_birth", date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Purchase Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.purchase_date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.purchase_date ? format(formData.purchase_date, "PPP") : "Pick a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={formData.purchase_date}
+                onSelect={(date) => handleInputChange("purchase_date", date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Date of Arrival at Farm *</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.date_of_arrival_at_farm && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.date_of_arrival_at_farm ? format(formData.date_of_arrival_at_farm, "PPP") : "Pick a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={formData.date_of_arrival_at_farm}
+                onSelect={(date) => handleInputChange("date_of_arrival_at_farm", date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Date of Birth on Farm *</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.date_of_birth_on_farm && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.date_of_birth_on_farm ? format(formData.date_of_birth_on_farm, "PPP") : "Pick a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={formData.date_of_birth_on_farm}
+                onSelect={(date) => handleInputChange("date_of_birth_on_farm", date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        * At least one of "Date of Arrival at Farm" or "Date of Birth on Farm" is required
+      </p>
 
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>
