@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface BulkUpdateItem {
-  id: string;
+  id?: string;
   quantity?: number;
   unit_cost?: number;
   min_threshold?: number;
@@ -86,7 +86,8 @@ serve(async (req) => {
           if (error) throw error;
           return { success: true, id: update.id, data };
         } catch (error) {
-          return { success: false, id: update.id, error: error.message };
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          return { success: false, id: update.id, error: errorMessage };
         }
       });
 
@@ -132,8 +133,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in bulk-inventory-update function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: errorMessage,
       success: false 
     }), {
       status: 500,
